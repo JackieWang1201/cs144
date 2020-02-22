@@ -7,19 +7,42 @@
 #include <list>
 #include <string>
 #include <utility>
+#include <memory>
+#include <iostream>
 
 //! \brief An in-order byte stream.
 
 //! Bytes are written on the "input" side and read from the "output"
 //! side.  The byte stream is finite: the writer can end the input,
 //! and then no more bytes can be written.
+using namespace std;
 class ByteStream {
   private:
-    // Your code here -- add private members as necessary.
+    struct Node
+    {
+        char val;
+        std::shared_ptr<Node> next; /*shared_ptr as circular linked list is used */
+        Node() : val('.'), next(nullptr) {};
+    };
+    std::shared_ptr<Node> circular_ll{};
+    Node* read_ptr{};
+    Node* write_ptr{};
+    size_t num_write{}, num_pop{};
+    size_t _capacity{};
 
     bool _error{};  //!< Flag indicating that the stream suffered an error.
+    bool _end_input{};
 
   public:
+    //! Copy Constructor
+    ByteStream(const ByteStream &b)
+    {   
+        *this =b; ;
+    }
+    ByteStream& operator= (const ByteStream &b)
+    {   
+        return *this=b;
+    }
     //! Construct a stream with room for `capacity` bytes.
     ByteStream(const size_t capacity);
 
