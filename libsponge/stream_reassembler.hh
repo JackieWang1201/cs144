@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
+#include <unordered_set>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
@@ -14,6 +16,12 @@ class StreamReassembler {
 
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
+    int last_assembled;  //!< Index till which contiguous bytes have been seen
+    int total_bytes_rcvd;//!< Number of bytes received till now
+    string buffer; //!< Buffer to hold the bytes 
+    bool eof_seen{};
+    unordered_set<size_t> index_seen;
+    vector<pair<size_t, size_t> > intervals; //!< Each pair<size_t, size_t> denotes the portion([start,end]) of the buffer already filled
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
