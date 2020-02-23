@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <list>
 #include <unordered_set>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
@@ -19,9 +20,16 @@ class StreamReassembler {
     int last_assembled;  //!< Index till which contiguous bytes have been seen
     int total_bytes_rcvd;//!< Number of bytes received till now
     string buffer; //!< Buffer to hold the bytes 
-    bool eof_seen{};
-    unordered_set<size_t> index_seen;
-    vector<pair<size_t, size_t> > intervals; //!< Each pair<size_t, size_t> denotes the portion([start,end]) of the buffer already filled
+    bool eof_seen{}; //!< Set once an eof is seen
+    list<pair<size_t, size_t> > intervals; //!< Each pair<size_t, size_t> denotes the portion([start,end]) of the buffer already filled
+    //! \brief Helper for transferring from input stream to buffer
+    //! \param start the start index of buffer
+    //! \param end the end index of buffer
+    //! \param index the index of the first byte in `data`
+    //! \param data the string being added
+    void transfer_to_buffer(size_t start, size_t end, size_t index, const string & data);
+    
+        
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.

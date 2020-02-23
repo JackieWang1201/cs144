@@ -3,62 +3,67 @@
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
-#include <iostream>
 
 // Implementation of a flow-controlled in-memory byte stream.
 
 // Passes automated checks run by `make check_lab0`.
-
-// You will need to add private members to the class declaration in `byte_stream.hh`
-
-template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
-
-using namespace std;
+// Changed from Linked List of Char nodes to Linked List of String nodes to resolve Lab1 timeout issue
 
 ByteStream::ByteStream(const size_t capacity) {
     _capacity = capacity; 
     if(capacity==0)
         return;
-    circular_ll = make_unique<Node>();
-    std::shared_ptr<Node>* first = &circular_ll;//used to point last node's next to first node
-    write_ptr = circular_ll.get();
-    read_ptr  = circular_ll.get();//read_ptr to create capacity-1 more nodes
-    for(int i =1; i < static_cast<int> ( capacity); i++)
-    {
-        read_ptr->next = make_unique<Node>();
-        read_ptr = (read_ptr->next).get();
-    }
-    read_ptr->next = *first; // make the linked list circular
-    read_ptr = write_ptr; //point read pointer to write point
+    ll = make_unique<Node>("");
+    write_ptr = &ll;
+    read_ptr  = &ll;
     num_pop = 0, num_write = 0;
 }
 
 size_t ByteStream::write(const string &data) {
-    size_t i = 0;
     size_t sz = data.size();
-    while((buffer_empty()||(write_ptr!=read_ptr)) && i<sz)
+    size_t write_size = min(sz, remaining_capacity());
+    if((buffer_empty()||(write_ptr!=read_ptr))  && remaining_capacity()>0)
     {
-        write_ptr->val = data[i];
-        write_ptr = (write_ptr->next).get();
-        i++;
-        num_write++;
+        if(remaining_capacity() >= sz)
+        {
+            (*write_ptr)->next = make_unique<Node>(data);
+            num_write+= sz;
+        }
+        else
+        {
+            (*write_ptr)->next = make_unique<Node>(data.substr(0, write_size));
+            num_write+= write_size;
+        }
+        write_ptr = &((*write_ptr)->next);
     }
-    return i;
+    return write_size;
 }
 
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
     string peek_data = "";
     size_t read_num = 0;
-    Node* oread_ptr = (read_ptr);
+    std::unique_ptr<Node>* oread_ptr = (read_ptr);
     while((!buffer_empty() || (oread_ptr!=write_ptr)) && read_num < len)
     {
-        peek_data = peek_data + (oread_ptr)->val;
-        oread_ptr = (oread_ptr->next).get();
-        read_num++;
+        std::unique_ptr<Node>* oread_ptr_cpy = oread_ptr;
+        oread_ptr = &((*oread_ptr)->next);
+        string oread_string = (*oread_ptr)->val;
+        size_t oread_size = oread_string.size();
+        if(read_num + oread_size <= len)
+        {
+            peek_data+= oread_string;
+            read_num+=oread_size;
+        }
+        else
+        {
+            size_t read_size =  (len - read_num);
+            peek_data+= oread_string.substr(0, read_size);
+            (*oread_ptr)->val = oread_string.substr(read_size, string::npos);
+            oread_ptr = oread_ptr_cpy;
+            read_num+= read_size;
+        }
     }
-        
     return peek_data;
 }
 
@@ -67,9 +72,23 @@ void ByteStream::pop_output(const size_t len) {
     size_t read_num = 0;
     while((!buffer_empty() ||(read_ptr!=write_ptr)) && read_num < len)
     {
-        read_ptr = (read_ptr->next).get();
-        read_num++;
-        num_pop++;
+        std::unique_ptr<Node>* read_ptr_cpy = read_ptr;
+        read_ptr = &((*read_ptr)->next);
+        string read_string = (*read_ptr)->val;
+        size_t read_size = read_string.size();
+        if(read_num + read_size <= len)
+        {
+            read_num+=read_size;
+            num_pop+=read_size;
+        }
+        else
+        {
+            read_size =  (len - read_num);
+            (*read_ptr)->val = read_string.substr(read_size, string::npos);
+            read_ptr = read_ptr_cpy;
+            read_num+= read_size;
+            num_pop+= read_size;
+        }
     }
 }
 

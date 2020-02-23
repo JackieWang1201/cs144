@@ -3,12 +3,9 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <deque>
-#include <list>
 #include <string>
 #include <utility>
 #include <memory>
-#include <iostream>
 
 //! \brief An in-order byte stream.
 
@@ -20,13 +17,13 @@ class ByteStream {
   private:
     struct Node
     {
-        char val;
-        std::shared_ptr<Node> next; /*shared_ptr as circular linked list is used */
-        Node() : val('.'), next(nullptr) {};
+        string val;
+        std::unique_ptr<Node> next; 
+        Node(string s) : val(s), next(nullptr) {};
     };
-    std::shared_ptr<Node> circular_ll{};
-    Node* read_ptr{};
-    Node* write_ptr{};
+    std::unique_ptr<Node> ll{};
+    std::unique_ptr<Node>* read_ptr{};
+    std::unique_ptr<Node>* write_ptr{};
     size_t num_write{}, num_pop{};
     size_t _capacity{};
 
