@@ -22,21 +22,14 @@ ByteStream::ByteStream(const size_t capacity) {
 size_t ByteStream::write(const string &data) {
     size_t sz = data.size();
     size_t write_size = min(sz, remaining_capacity());
-    if((buffer_empty()||(write_ptr!=read_ptr))  && remaining_capacity()>0)
+    if(remaining_capacity()>0)
     {
-        if(remaining_capacity() >= sz)
-        {
-            (*write_ptr)->next = make_unique<Node>(data);
-            num_write+= sz;
-        }
-        else
-        {
-            (*write_ptr)->next = make_unique<Node>(data.substr(0, write_size));
-            num_write+= write_size;
-        }
+        (*write_ptr)->next = make_unique<Node>(data.substr(0, write_size));
+        num_write+= write_size;
         write_ptr = &((*write_ptr)->next);
+        return write_size;
     }
-    return write_size;
+    return 0;
 }
 
 //! \param[in] len bytes will be copied from the output side of the buffer
@@ -46,7 +39,6 @@ string ByteStream::peek_output(const size_t len) const {
     std::unique_ptr<Node>* oread_ptr = (read_ptr);
     while((!buffer_empty() || (oread_ptr!=write_ptr)) && read_num < len)
     {
-        std::unique_ptr<Node>* oread_ptr_cpy = oread_ptr;
         oread_ptr = &((*oread_ptr)->next);
         string oread_string = (*oread_ptr)->val;
         size_t oread_size = oread_string.size();
@@ -60,7 +52,6 @@ string ByteStream::peek_output(const size_t len) const {
             size_t read_size =  (len - read_num);
             peek_data+= oread_string.substr(0, read_size);
             (*oread_ptr)->val = oread_string.substr(read_size, string::npos);
-            oread_ptr = oread_ptr_cpy;
             read_num+= read_size;
         }
     }

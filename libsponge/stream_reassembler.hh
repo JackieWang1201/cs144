@@ -5,29 +5,28 @@
 
 #include <cstdint>
 #include <string>
-#include <vector>
 #include <list>
-#include <unordered_set>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
+    struct interval
+    {
+        size_t start;
+        size_t end;
+        string buffer;
+        interval(): start(-1), end(-1), buffer(""){};
+        interval(size_t s, size_t e, string b): start(s), end(e), buffer(b){};
+    };
 
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
     int last_assembled;  //!< Index till which contiguous bytes have been seen
     int total_bytes_rcvd;//!< Number of bytes received till now
-    string buffer; //!< Buffer to hold the bytes 
     bool eof_seen{}; //!< Set once an eof is seen
-    list<pair<size_t, size_t> > intervals; //!< Each pair<size_t, size_t> denotes the portion([start,end]) of the buffer already filled
-    //! \brief Helper for transferring from input stream to buffer
-    //! \param start the start index of buffer
-    //! \param end the end index of buffer
-    //! \param index the index of the first byte in `data`
-    //! \param data the string being added
-    void transfer_to_buffer(size_t start, size_t end, size_t index, const string & data);
+    list<interval> intervals; //!< List of intervals which are yet to be reassembled
     
         
 
