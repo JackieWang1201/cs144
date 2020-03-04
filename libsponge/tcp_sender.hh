@@ -8,7 +8,6 @@
 
 #include <functional>
 #include <queue>
-#include <unordered_set>
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -54,9 +53,6 @@ class TCPSender {
 
     //! queue for Potential Retransmission of Segments
     queue<TCPSegment > _retransmission_queue{};
-
-    //! unordered Set of absolute sequence numbers not acknowledged
-    unordered_set<uint64_t> set_seqno{};
 
     //! current retransmission timer timeout
     unsigned int _current_retransmission_timeout{};

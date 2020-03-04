@@ -32,7 +32,6 @@ void TCPSender::fill_window() {
         syn_seg.header().seqno = next_seqno();
         syn_seg.header().syn = true;
         _segments_out.push(syn_seg);
-        set_seqno.insert(_next_seqno);
         _next_seqno++;
         _is_syn_sent = true;
         _retransmission_queue.push(syn_seg);
@@ -50,7 +49,6 @@ void TCPSender::fill_window() {
         size_t payload_size = min(TCPConfig::MAX_PAYLOAD_SIZE, min(_stream.buffer_size(), max(static_cast<uint64_t>(1),_window_size) - bytes_in_flight()));
         tseg.payload() = _stream.read(payload_size);
         _checkpoint = _stream.bytes_read();
-        set_seqno.insert(_next_seqno);
         _next_seqno+=payload_size;
         if(_stream.eof() && bytes_in_flight()< _window_size && !_is_fin_sent)
         {
@@ -73,7 +71,6 @@ void TCPSender::fill_window() {
         fin_seg.header().seqno = next_seqno();
         fin_seg.header().fin = true;
         _segments_out.push(fin_seg);
-        set_seqno.insert(_next_seqno);
         _next_seqno++;
         _retransmission_queue.push(fin_seg);
         _is_fin_sent = true;
@@ -97,21 +94,19 @@ bool TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     if(abs_ackno<=_max_seqno_acked)
         return true;
     _max_seqno_acked = max(_max_seqno_acked, abs_ackno);
-    auto set_seqno_it = set_seqno.begin();
+    uint64_t queue_front_seqno = (!_retransmission_queue.empty()) ? unwrap(_retransmission_queue.front().header().seqno, _isn, _checkpoint) : 0;
     if(abs_ackno<=_max_seqno+1)
     {
-        while(set_seqno_it != set_seqno.end())
+        while(!_retransmission_queue.empty() && queue_front_seqno < abs_ackno)
         {
-            if(*set_seqno_it< abs_ackno)
-            {
-                set_seqno.erase(set_seqno_it);
-                set_seqno_it = set_seqno.begin();
-            }
+            _retransmission_queue.pop();
+            if(!_retransmission_queue.empty())
+                queue_front_seqno = unwrap(_retransmission_queue.front().header().seqno, _isn, _checkpoint);
             else
                 break;
         }
         _current_retransmission_timeout = _initial_retransmission_timeout;
-        if(!set_seqno.empty())
+        if(!_retransmission_queue.empty())
         {
             _timer_on = true;
             _timer_expiry = _time_alive + _current_retransmission_timeout;
@@ -133,21 +128,15 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
         return;
     while(!_retransmission_queue.empty())
     {
-        if(set_seqno.find(unwrap(_retransmission_queue.front().header().seqno, _isn, _checkpoint))!=set_seqno.end())
+        _segments_out.push(_retransmission_queue.front());
+        if(_window_size!=0)
         {
-            _segments_out.push(_retransmission_queue.front());
-            if(_window_size!=0)
-            {
-                _current_retransmission_timeout*=2;
-                _consecutive_retransmissions++;
-            }
-            _timer_expiry = _time_alive + _current_retransmission_timeout;
-            break;
+            _current_retransmission_timeout*=2;
+            _consecutive_retransmissions++;
         }
-        else
-        {
-            _retransmission_queue.pop();
-        }
+        _timer_expiry = _time_alive + _current_retransmission_timeout;
+        break;
+        _retransmission_queue.pop();
     }
     if(_retransmission_queue.empty())
         _timer_on = false;
