@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <queue>
+#include <unordered_set>
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -31,6 +32,45 @@ class TCPSender {
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
+
+    //! the (absolute) max sequence sent
+    uint64_t _max_seqno{0};
+
+    //! the window size
+    uint64_t _window_size{1};
+
+    //! the (absolute) sequence number acknowledged
+    uint64_t _max_seqno_acked{0};
+    
+    //! checkpoint for unwrapping 32bit ackno into 64bit absolute ackno
+    uint64_t _checkpoint{0};
+    
+    //! variables to store if syn and fin have been sent
+    bool _is_syn_sent{};
+    bool _is_fin_sent{};
+
+    //! time alive since TCP sender was started. Updated when tick() is called
+    size_t _time_alive{0};
+
+    //! queue for Potential Retransmission of Segments
+    queue<TCPSegment > _retransmission_queue{};
+
+    //! unordered Set of absolute sequence numbers not acknowledged
+    unordered_set<uint64_t> set_seqno{};
+
+    //! current retransmission timer timeout
+    unsigned int _current_retransmission_timeout{};
+
+    //! number of consecutive transmissions because of retransmission timer timeout
+    unsigned int _consecutive_retransmissions{};
+
+    //! is timer for retransmission on
+    bool _timer_on{false};
+
+    //! time at which retransmission timer expires
+    unsigned int _timer_expiry{};
+    
+
 
   public:
     //! Initialize a TCPSender

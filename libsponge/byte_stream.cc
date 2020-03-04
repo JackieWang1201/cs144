@@ -51,7 +51,6 @@ string ByteStream::peek_output(const size_t len) const {
         {
             size_t read_size =  (len - read_num);
             peek_data+= oread_string.substr(0, read_size);
-            (*oread_ptr)->val = oread_string.substr(read_size, string::npos);
             read_num+= read_size;
         }
     }
