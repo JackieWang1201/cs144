@@ -21,6 +21,30 @@ class TCPConnection {
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
 
+    //! time alive since TCP sender was started. Updated when tick() is called
+    size_t _time_connection_alive{0};
+
+    //! time when last segment was received
+    size_t _time_since_last_segment_received{0};
+
+    //! rst flag seen in received segment
+    bool _is_rst_seen{false};
+
+    //! send rst flag
+    bool _send_rst{false};
+
+    //! active_connect
+    bool _connect_initiated{false};
+
+    //! Sequence number to be used when sending RST
+    WrappingInt32 rst_seqno{0};
+    
+    //! modify sequence number for rst
+    bool use_rst_seqno{false};
+    
+    //! Take segments from _sender's queue and push it to _segments_out{}
+    void fill_queue();
+
   public:
     //! \name "Input" interface for the writer
     //!@{

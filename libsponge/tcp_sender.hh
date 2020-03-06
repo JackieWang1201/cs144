@@ -65,6 +65,9 @@ class TCPSender {
 
     //! time at which retransmission timer expires
     unsigned int _timer_expiry{};
+
+    //! proper ACK seen atleast once
+    bool _ack_seen{false};
     
 
 

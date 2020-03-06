@@ -4,11 +4,9 @@
 
 #include <random>
 
-
 // passes automated checks run by `make check_lab3`.
 
 
-using namespace std;
 
 //! \param[in] capacity the capacity of the outgoing byte stream
 //! \param[in] retx_timeout the initial amount of time to wait before retransmitting the oldest outstanding segment
@@ -21,7 +19,10 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     }
 
 uint64_t TCPSender::bytes_in_flight() const { 
-    return _next_seqno - _max_seqno_acked;
+    uint64_t bytes_in_flight  = _next_seqno;
+    if(_ack_seen)
+        bytes_in_flight =  (_next_seqno > _max_seqno_acked)?(_next_seqno - _max_seqno_acked):0;
+    return bytes_in_flight;
  }
 
 
@@ -93,10 +94,11 @@ bool TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     uint64_t abs_ackno = unwrap(ackno, _isn, _checkpoint);
     if(abs_ackno<=_max_seqno_acked)
         return true;
-    _max_seqno_acked = max(_max_seqno_acked, abs_ackno);
     uint64_t queue_front_seqno = (!_retransmission_queue.empty()) ? unwrap(_retransmission_queue.front().header().seqno, _isn, _checkpoint) : 0;
     if(abs_ackno<=_max_seqno+1)
     {
+        _ack_seen = true;
+        _max_seqno_acked = max(_max_seqno_acked, abs_ackno);
         while(!_retransmission_queue.empty() && queue_front_seqno < abs_ackno)
         {
             _retransmission_queue.pop();
