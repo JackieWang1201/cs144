@@ -2,8 +2,7 @@
 #include <iostream>
 
 
-// Timing out on automated checks run by `make check` which use txrx.sh script
-// Possibly because of traffic not going from tun interface in VM to host machine
+// passes automated checks run by `make check_lab4`.
 
 using namespace std;
 size_t TCPConnection::remaining_outbound_capacity() const { return _sender.stream_in().remaining_capacity(); }
@@ -45,13 +44,14 @@ void TCPConnection::segment_received(const TCPSegment &seg)
         return;
     }
     // if no payload for ack to piggyback on
-    //if(seg_rcvd_status && _sender.stream_in().buffer_empty() && seg.length_in_sequence_space() > 0 )
     if(seg_rcvd_status && _segments_out.empty() && seg.length_in_sequence_space() > 0 )
     {
         send_empty = true;
     }
     if(!seg_rcvd_status && _receiver.ackno().has_value() && !segment_header.rst)
+    {   
         send_empty = true;
+    }
     // send RST if ACK has come with empty payload; Following is commented to pass the test fsm_ack_rst_relaxed; uncomment to pass fsm_ack_rst
     /*if( ((seg.length_in_sequence_space()==0 && _receiver.ackno().has_value()==0 ) || (!_connect_initiated && segment_header.ack)) && !segment_header.rst)
     {   
@@ -79,12 +79,14 @@ void TCPConnection::segment_received(const TCPSegment &seg)
 bool TCPConnection::active() const
 { 
     bool unclean_shutdown = _is_rst_seen;
-    bool clean_shutdown = (unassembled_bytes()==0) && _sender.stream_in().eof() && _sender.stream_in().input_ended() && (bytes_in_flight()==0);
+    bool clean_shutdown = (unassembled_bytes()==0) && _receiver.stream_out().eof() && _sender.stream_in().eof() && (bytes_in_flight()==0);
     clean_shutdown &= ((!_linger_after_streams_finish) || (time_since_last_segment_received() >= 10*_cfg.rt_timeout));
     return (!unclean_shutdown) && (!clean_shutdown) && (!_send_rst);
 }
 
 size_t TCPConnection::write(const string &data) {
+    if(data.size()==0)
+        return 0;
     size_t write_size =  _sender.stream_in().write(data);
     _sender.fill_window();
     fill_queue();
@@ -154,7 +156,6 @@ TCPConnection::~TCPConnection() {
             _sender.send_empty_segment();
             fill_queue();
 
-            // Your code here: need to send a RST segment to the peer
         }
     } catch (const exception &e) {
         std::cerr << "Exception destructing TCP FSM: " << e.what() << std::endl;

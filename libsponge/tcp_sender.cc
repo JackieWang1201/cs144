@@ -42,13 +42,15 @@ void TCPSender::fill_window() {
             _timer_on = true;
         }
     }
-    while(!_stream.buffer_empty() && bytes_in_flight() < _window_size)
+    while(!_stream.buffer_empty() && (bytes_in_flight() < _window_size  || !_window_size))
     {
         TCPSegment tseg;
         tseg.header().seqno = next_seqno();
         //Zero window probing
         size_t payload_size = min(TCPConfig::MAX_PAYLOAD_SIZE, min(_stream.buffer_size(), max(static_cast<uint64_t>(1),_window_size) - bytes_in_flight()));
-        tseg.payload() = _stream.read(payload_size);
+        if(payload_size==0)
+            break;
+        tseg.payload() = Buffer(_stream.read(payload_size));
         _checkpoint = _stream.bytes_read();
         _next_seqno+=payload_size;
         if(_stream.eof() && bytes_in_flight()< _window_size && !_is_fin_sent)
@@ -65,8 +67,10 @@ void TCPSender::fill_window() {
             _timer_expiry = _time_alive + _current_retransmission_timeout;
             _timer_on = true;
         }
+        if(_window_size==0)//Zero window probing
+            break;
     }
-    if(!_is_fin_sent && _stream.eof() && bytes_in_flight()<_window_size)
+    if(!_is_fin_sent && _stream.eof() && (bytes_in_flight()<_window_size || bytes_in_flight()==0))
     {
         TCPSegment fin_seg;
         fin_seg.header().seqno = next_seqno();

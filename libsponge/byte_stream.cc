@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
-
 // Implementation of a flow-controlled in-memory byte stream.
 
 // Passes automated checks run by `make check_lab0`.
@@ -36,20 +35,21 @@ size_t ByteStream::write(const string &data) {
 string ByteStream::peek_output(const size_t len) const {
     string peek_data = "";
     size_t read_num = 0;
+    size_t read_len = min(len, buffer_size());
     std::unique_ptr<Node>* oread_ptr = (read_ptr);
-    while((!buffer_empty() || (oread_ptr!=write_ptr)) && read_num < len)
+    while((!buffer_empty() || (oread_ptr!=write_ptr)) && read_num < read_len)
     {
         oread_ptr = &((*oread_ptr)->next);
         string oread_string = (*oread_ptr)->val;
         size_t oread_size = oread_string.size();
-        if(read_num + oread_size <= len)
+        if(read_num + oread_size <= read_len)
         {
             peek_data+= oread_string;
             read_num+=oread_size;
         }
         else
         {
-            size_t read_size =  (len - read_num);
+            size_t read_size =  (read_len - read_num);
             peek_data+= oread_string.substr(0, read_size);
             read_num+= read_size;
         }
@@ -60,20 +60,21 @@ string ByteStream::peek_output(const size_t len) const {
 //! \param[in] len bytes will be removed from the output side of the buffer
 void ByteStream::pop_output(const size_t len) { 
     size_t read_num = 0;
-    while((!buffer_empty() ||(read_ptr!=write_ptr)) && read_num < len)
+    size_t read_len = min(len, buffer_size());
+    while((!buffer_empty() ||(read_ptr!=write_ptr)) && read_num < read_len)
     {
         std::unique_ptr<Node>* read_ptr_cpy = read_ptr;
         read_ptr = &((*read_ptr)->next);
         string read_string = (*read_ptr)->val;
         size_t read_size = read_string.size();
-        if(read_num + read_size <= len)
+        if(read_num + read_size <= read_len)
         {
             read_num+=read_size;
             num_pop+=read_size;
         }
         else
         {
-            read_size =  (len - read_num);
+            read_size =  (read_len - read_num);
             (*read_ptr)->val = read_string.substr(read_size, string::npos);
             read_ptr = read_ptr_cpy;
             read_num+= read_size;
@@ -88,7 +89,7 @@ bool ByteStream::input_ended() const { return _end_input; }
 
 size_t ByteStream::buffer_size() const { return num_write - num_pop; }
 
-bool ByteStream::buffer_empty() const { return read_ptr==write_ptr && (remaining_capacity()>0); }
+bool ByteStream::buffer_empty() const { return buffer_size()==0; }
 
 bool ByteStream::eof() const { return input_ended() && buffer_empty(); }
 
