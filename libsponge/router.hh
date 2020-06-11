@@ -49,6 +49,22 @@ class Router {
     //! datagram's destination address.
     void route_one_datagram(InternetDatagram &dgram);
 
+    //! Node definition for Prefix Match Tree
+    struct Node
+    {
+        std::unique_ptr<Node> left; 
+        std::unique_ptr<Node> right; 
+        std::optional<Address> next_hop;
+        size_t interface_num;
+        bool match;
+        Node() : left(nullptr), right(nullptr), next_hop({}), interface_num(0), match(false) {};
+    };
+
+    //! Root of the prefix match tree
+    std::unique_ptr<Node> _root{};
+
+
+
   public:
     //! Add an interface to the router
     //! \param[in] interface an already-constructed network interface
